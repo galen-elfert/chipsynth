@@ -16,9 +16,9 @@ typedef struct cs_encoder_state_t
 
 void cs_encoder_setup(int pin_A, int pin_B);
 
-void cs_encoder_interrupt_routine_A();
-void cs_encoder_interrupt_routine_B();
+void cs_encoder_isr_A();
+void cs_encoder_isr_B();
 
-cs_encoder_state_t cs_encoder_read_state();
+int cs_encoder_read_count();
 
 #endif /* ifndef _CS_ENCODER_H */

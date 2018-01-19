@@ -1,3 +1,12 @@
+/*
+ * Chip Synth
+ * 
+ * Teensy based CEM3394 synth chip controller
+ * 
+ * Created Jan 5 2017
+ * Galen Elfert
+ */
+
 #include "cs_encoder.h"
 
 static volatile int cs_encoder_count;
@@ -7,7 +16,7 @@ int cs_encoder_pin_A;
 int cs_encoder_pin_B;
 
 //static volatile cs_encoder_state_t cs_encoder_state = {0};
-static cs_encoder_state_t cs_encoder_state = {0};
+//static cs_encoder_state_t cs_encoder_state = {0};
 
 void cs_encoder_setup(int pin_A, int pin_B)
 {
@@ -15,51 +24,41 @@ void cs_encoder_setup(int pin_A, int pin_B)
     cs_encoder_pin_B = pin_B;
     pinMode(pin_A, INPUT_PULLUP);
     pinMode(pin_B, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(pin_A), cs_encoder_interrupt_routine_A, FALLING);
-    attachInterrupt(digitalPinToInterrupt(pin_B), cs_encoder_interrupt_routine_B, FALLING);
+    attachInterrupt(digitalPinToInterrupt(pin_A), cs_encoder_isr_A, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(pin_B), cs_encoder_isr_B, CHANGE);
+    cs_encoder_last_time = millis();
+    cs_encoder_count = 0;
+}
+
+void cs_encoder_isr_A()
+{
+    if(digitalRead(cs_encoder_pin_A) == LOW && digitalRead(cs_encoder_pin_B) == HIGH)
+    {
+        if(millis() - cs_encoder_last_time > CS_ENCODER_DEBOUNCE_TIME)
+        {
+            cs_encoder_count++;
+        }
+    }
     cs_encoder_last_time = millis();
 }
 
-void cs_encoder_interrupt_routine_A()
+void cs_encoder_isr_B()
 {
-    if(digitalRead(cs_encoder_pin_B) == HIGH)
+    if(digitalRead(cs_encoder_pin_B) == LOW && digitalRead(cs_encoder_pin_A) == HIGH)
     {
         if(millis() - cs_encoder_last_time > CS_ENCODER_DEBOUNCE_TIME)
         {
-            cs_encoder_state.count++;
-            cs_encoder_last_time = millis();
-        } else {
-            cs_encoder_state.debounce_A++;
+            cs_encoder_count--;
         }
-    } else {
-        cs_encoder_state.fail_A++;
     }
+    cs_encoder_last_time = millis();
 }
 
-void cs_encoder_interrupt_routine_B()
-{
-    if(digitalRead(cs_encoder_pin_A) == HIGH)
-    {
-        if(millis() - cs_encoder_last_time > CS_ENCODER_DEBOUNCE_TIME)
-        {
-            cs_encoder_state.count--;
-            cs_encoder_last_time = millis();
-        } else {
-            cs_encoder_state.debounce_B++;
-        }
-    } else {
-        cs_encoder_state.fail_B++;
-    }
-}
-
-cs_encoder_state_t cs_encoder_read_state()
+int cs_encoder_read_count()
 {
     noInterrupts();
-    cs_encoder_state_t this_state = cs_encoder_state;
-    //cs_encoder_state.fail_A = 0;
-    //cs_encoder_state.fail_B = 0;
-    //cs_encoder_state.debounce_A = 0;
-    //cs_encoder_state.debounce_B = 0;
+    int this_count = cs_encoder_count;
+    cs_encoder_count = 0;
     interrupts();
-    return this_state;
+    return this_count;
 }
